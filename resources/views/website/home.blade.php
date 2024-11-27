@@ -25,6 +25,7 @@
     }
 </style>
  @if (!Request::get('tags'))
+ 
  <div class="feed global" id="dynamic">
     <div class="item hide">
         <!-- <div class="palette">   

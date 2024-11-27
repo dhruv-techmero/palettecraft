@@ -94,8 +94,13 @@
     <div class="line"></div>
 </div>
 @if (count($related_palettes ) > 0 )
-<div class="title related" style="text-align: center;">More palettes with <a href="/palettes/yellow" class="tag button" type="color" tag="yellow">yellow</a></div>
-<div class="feed global" id="dynamic">
+@php 
+ $single_tag  = $palette->tags[0] ?? '';
+@endphp 
+@if($single_tag)
+<div class="title related" style="text-align: center;margin-top:10px">More palettes with <a href="{{ route('website-home',['sidebar_filter' => $single_tag])  }}" class="tag button" type="color" tag="{{ $single_tag}}">{{ $single_tag}}</a></div>
+@endif
+<div class="feed global" id="dynamic" style="margin:31px 0 0 0;">
 
     <div class="item hide">
         <!-- <div class="palette">   

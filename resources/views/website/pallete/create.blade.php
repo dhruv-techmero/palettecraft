@@ -17,10 +17,14 @@
 		<div class="place c1" onclick="openColorPicker(this)"></div>
 		<div class="place c0" onclick="openColorPicker(this)"></div>
 	</div>
-	<div class="colorpicker card hide">
-		<div id="picker"></div>
-		<input id="colorInput" />
-	</div>
+
+	<div class="colorpicker hide">
+    <div class="container">
+        <input type="text" id="colorInput" placeholder="Enter color code">
+        <input type="text" id="picker">
+        <!-- <button class="button">Apply Color</button> -->
+    </div>
+</div>
 </div>
 
 <div class="suggestedTags">

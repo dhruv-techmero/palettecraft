@@ -136,61 +136,66 @@ function formatThousands(n, dp) {
 // localStorage.setItem('myCollection',myCollection);
 // }
 
-function like(code) {
-	const item = $('.item[data-code=' + code + ']');
-	const likeButton = item.find('.like');
-	const isLiked = likeButton.attr('status');
-	const csrfToken = $('meta[name="csrf-token"]').attr('content');
-	const status = isLiked == 'on' ? 'off' : 'on';
-	$.post(paletteLikeUrl, { code, status, _token: csrfToken }, function (response) {
-		if (response.status === 'success') {
-			// Update `myCollection` and button status
-			if (status === 'on') {
-				myCollection.push(code);
-				likeButton.attr('status', 'on');
-				$('.tongue').addClass('animate');
-				// getCollections();
-			} else {
-				myCollection.splice(myCollection.indexOf(code), 1);
-				likeButton.attr('status', 'off');
-				$('.tongue').removeClass('animate');
-				// getCollections();
-			}
 
-			// Update the likes count in the UI
-			const totalLikes = response.total_likes;
-			item.find('.like span').text(formatThousands(totalLikes));
-			
-			// Optionally display a success message
-			$('.likes').append("<div class='tip saved'>Saved!</div>");
-			getCollections()
-			setTimeout(() => $('.tip.saved').remove(), 2000);
-		} else {
-			// Handle error from server
-			alert(response.message || 'An error occurred. Please try again.');
-		}
-	}).fail(() => {
-		alert('Failed to update like. Please check your connection and try again.');
-	});
+
+function like(code) {
+    const item = $('.item[data-code=' + code + ']');
+    const likeButton = item.find('.like');
+    const isLiked = likeButton.attr('status');
+    const csrfToken = $('meta[name="csrf-token"]').attr('content');
+    const status = isLiked == 'on' ? 'off' : 'on';
+
+    $.post(paletteLikeUrl, { code, status, _token: csrfToken }, function (response) {
+        if (response.status === 'success') {
+            // Update `myCollection` and button status
+            if (status === 'on') {
+                myCollection.push(code);
+                likeButton.attr('status', 'on');
+                $('.tongue').addClass('animate');
+            } else {
+                myCollection.splice(myCollection.indexOf(code), 1);
+                likeButton.attr('status', 'off');
+                $('.tongue').removeClass('animate');
+                // Remove the unliked palette from the collections list
+                $(`.likesList .item[data-code="${code}"]`).remove();
+                // Remove from tracked codes
+                addedPaletteCodes = addedPaletteCodes.filter(c => c !== code);
+            }
+
+            // Update the likes count in the UI
+            const totalLikes = response.total_likes;
+            item.find('.like span').text(formatThousands(totalLikes));
+            
+            // Show feedback
+            $('.likes').append("<div class='tip saved'>Saved!</div>");
+            
+            // Refresh collections
+            getCollections();
+            
+            setTimeout(() => $('.tip.saved').remove(), 2000);
+        } else {
+            alert(response.message || 'An error occurred. Please try again.');
+        }
+    }).fail(() => {
+        alert('Failed to update like. Please check your connection and try again.');
+    });
 }
 
-let addedPaletteCodes = []; // Track already added palette codes
-// let collectionsFetched = false;  // Flag to track if collections have already been fetched
-
 function getCollections() {
-    // if (collectionsFetched) return;  // Prevent fetching again if already fetched
-    // collectionsFetched = true;
-	
     $.get(collectionUrl)
         .done(function (data) {
             $('.loader').hide();
 
             if (data.status === 'success') {
                 const collections = data.collections;
+                
+                // Clear existing items in likesList
+                $('.likesList').empty();
+                addedPaletteCodes = []; // Reset tracked codes
 
                 const uniqueCollections = collections.filter((value, index, self) => 
                     index === self.findIndex((t) => (
-                        t.palette.code === value.palette.code // Ensure unique palette codes
+                        t.palette.code === value.palette.code
                     ))
                 );
 
@@ -200,10 +205,13 @@ function getCollections() {
                     if (palette && !addedPaletteCodes.includes(palette.code)) {
                         addedPaletteCodes.push(palette.code);
                         placeItem('likesList', palette.code, palette.likes || 0, palette.created_at, palette);
-                    } else {
-                        console.warn('Duplicate or no palette found for collection:', collection);
                     }
                 });
+
+                // If no collections, maybe show a message
+                if (uniqueCollections.length === 0) {
+                    $('.likesList').html('<div class="no-collections">No saved palettes</div>');
+                }
             } else {
                 $('.error').html(data.message || 'Failed to fetch collections.');
             }
@@ -215,6 +223,7 @@ function getCollections() {
 }
 
 
+
 function placeItem(place, code, likes, date, palette) {
     let item = $('.main .item.hide').clone().removeClass('hide')
         .attr('data-index', itemIndex)
@@ -223,7 +232,7 @@ function placeItem(place, code, likes, date, palette) {
 		$('.right .likes').show();
     paintPalette(item, palette);
 
-    item.find('.palette a').attr('href', '/palette/' + code);
+    item.find('.palette a').attr('href', '/palette/single/' + palette.id);
     item.find('.palette a').attr('aria-label', 'Palette ' + code);
     item.find('.like').attr('onclick', 'like("' + code + '")');
 
@@ -238,7 +247,7 @@ function placeItem(place, code, likes, date, palette) {
     if (place === "likesList") {
         item = item.find('.palette').attr('data-code', code);
         item.find('span').remove();
-        item.append('<div class="x" onclick="like(\'' + code + '\')">✕</div>');
+        item.append('<div class="x" onclick="like(\'' + code + '\')">��</div>');
         $('.likesList').prepend(item);
     } else {
         item.appendTo('.' + place);
@@ -267,37 +276,37 @@ function paintPalette(obj, palette) {
     }
 }
 
-function optimize() {
-	setTimeout(function () {
-		loadOptimize = false
+// function optimize() {
+// 	setTimeout(function () {
+// 		loadOptimize = false
 
-		if ($('#sponsor-banner').html().length > 300) {
-			$('#bsa-zone_1682448560669-3_123456').remove()
-		} else {
-			loadOptimize = true
-		}
+// 		if ($('#sponsor-banner').html().length > 300) {
+// 			$('#bsa-zone_1682448560669-3_123456').remove()
+// 		} else {
+// 			loadOptimize = true
+// 		}
 
-		if (single != '' || page == 'collection') {
-			if ($('#badge-js').html().length > 300) {
-				$('#bsa-zone_1682448365049-4_123456').remove()
-			} else {
-				loadOptimize = true
-			}
-		}
+// 		if (single != '' || page == 'collection') {
+// 			if ($('#badge-js').html().length > 300) {
+// 				$('#bsa-zone_1682448365049-4_123456').remove()
+// 			} else {
+// 				loadOptimize = true
+// 			}
+// 		}
 
-		if (loadOptimize == true) {
-			console.log('Loading Optimize')
-			var bsa_optimize = document.createElement('script');
-			bsa_optimize.type = 'text/javascript';
-			bsa_optimize.async = true;
-			bsa_optimize.src = 'https://cdn4.buysellads.net/pub/colorhunt.js?' + (new Date() - new Date() % 600000);
-			(document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(bsa_optimize);
-		}
+// 		if (loadOptimize == true) {
+// 			console.log('Loading Optimize')
+// 			var bsa_optimize = document.createElement('script');
+// 			bsa_optimize.type = 'text/javascript';
+// 			bsa_optimize.async = true;
+// 			bsa_optimize.src = 'https://cdn4.buysellads.net/pub/colorhunt.js?' + (new Date() - new Date() % 600000);
+// 			(document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(bsa_optimize);
+// 		}
 
-	}, 1500)
+// 	}, 1500)
 
 
-}
+// }
 
 
 function getLikes() {
@@ -354,9 +363,9 @@ function placeBannerInFeed() {
 }
 
 document.addEventListener('keydown', function (event) {
-	if ((event.ctrlKey || event.metaKey) && event.key === 'd') {
-		gtag('event', 'added_to_bookmark', { 'event_category': 'user_engagement' });
-	}
+	// if ((event.ctrlKey || event.metaKey) && event.key === 'd') {
+	// 	gtag('event', 'added_to_bookmark', { 'event_category': 'user_engagement' });
+	// }
 });
 
 $(document).ready(function () {
@@ -486,73 +495,112 @@ $(document).ready(function () {
 	$('.inputContainer input').attr('placeholder', 'Add tags');
 });
 
-// Wrap the code in an IIFE to avoid polluting the global scope
 (function () {
-	let target;
-	let spot;
-
-	// Attach the function to the global window object
+    let target;
+    let spot;
+    let currentColor; 
 	window.openColorPicker = function (place) {
 		$('.colorpicker').removeClass('hide');
 		target = place;
 		spot = $(place).index();
-
-		let color = rgbToHex($(place).css('background-color').replace('#', ''));
-
+	
+		// Get current color and convert from RGB if needed
+		currentColor = rgbToHex($(place).css('background-color').replace('#', ''));
+	
+		// Clean up existing spectrum instance if it exists
 		if ($("#picker").hasClass("sp-initialized")) {
 			$("#picker").spectrum("destroy");
 		}
-
+	
+		// Initialize Spectrum color picker with immediate updates
 		$("#picker").spectrum({
 			preferredFormat: "hex",
 			flat: true,
 			showInput: true,
-			color: color,
-			change: function (selectedColor) {
-				$('#colorInput').val(selectedColor.toHexString()); // Update input value
-				setColor(); // Apply the selected color
-				
+			color: currentColor,
+			move: function(selectedColor) {
+				// Update color immediately when moving the picker
+				currentColor = selectedColor.toHexString();
+				setColor(currentColor);
+			},
+			change: function(selectedColor) {
+				// Update color immediately when clicking on the picker
+				currentColor = selectedColor.toHexString();
+				setColor(currentColor);
+				closeColorPicker(); // Close picker after selection
 			}
 		});
-
+	
 		$('.colorpicker .container').toggleClass('open');
 	};
-
-	function rgbToHex(color) {
-		if (!color.startsWith("rgb")) {
-			return color.replace("#", "");
-		}
-		let a = color.split("(")[1].split(")")[0];
-		a = a.split(",");
-		let b = a.map(function (x) {
-			x = parseInt(x).toString(16);
-			return (x.length === 1) ? "0" + x : x;
-		});
-		return b.join("");
-	}
-	function setColor() {
-		let color = $('#colorInput').val(); // Get the value from the input
-		if (color) {
-			// Ensure the color starts with a "#" before applying
+	
+	function setColor(color) {
+		if (color && target) {
 			color = color.startsWith('#') ? color : `#${color}`;
-			$(target).css('background', color); // Apply color to the selected target
-			// color = '';
-			// console.log(`Color set to: ${color}`); // Log for debugging
-		} else {
-			console.error('No color selected!');
+			$(target).css('background-color', color);
+			$('#colorInput').val(color);
 		}
 	}
-	// Bind dynamically
-	$(document).on('click', '.place', function () {
-		openColorPicker(this);
+	$('#colorInput').on('change', function() {
+		// alert(currentColor)
+		currentColor = $(this).val();
+		setColor(currentColor);
 	});
-	$(document).on('click', function (event) {
-		if (!$(event.target).closest('.colorpicker').length &&
-			!$(event.target).closest('.place').length) {
-			// Close the color picker
-			$('.colorpicker').addClass('hide');
-		}
-	});
+    function closeColorPicker() {
+        // Always apply the last selected color before closing
+        if (currentColor && target) {
+            setColor(currentColor);
+        }
+        
+        // Close and cleanup
+        $('.colorpicker').addClass('hide');
+        $('.colorpicker .container').removeClass('open');
+        if ($("#picker").hasClass("sp-initialized")) {
+            $("#picker").spectrum("destroy");
+        }
+    }
 
+    // Rest of your helper functions...
+    function rgbToHex(color) {
+        if (!color.startsWith("rgb")) {
+            return color.replace("#", "");
+        }
+        let a = color.split("(")[1].split(")")[0];
+        a = a.split(",");
+        let b = a.map(function (x) {
+            x = parseInt(x).toString(16);
+            return (x.length === 1) ? "0" + x : x;
+        });
+        return b.join("");
+    }
+    // Consolidated event handlers
+    $(document).ready(function() {
+        // Single click handler for palette places
+        $('.place').on('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            openColorPicker(this);
+        });
 
+        // Single click handler for closing
+        $(document).on('click', function(e) {
+            if (!$(e.target).closest('.colorpicker').length && 
+                !$(e.target).closest('.place').length && 
+                !$(e.target).closest('.sp-container').length) {
+                closeColorPicker();
+            }
+        });
+
+        // Color input button handler
+        $('.colorpicker #colorInput').on('click', function() {
+            const color = $('#colorInput').val();
+            if (color && target) {
+                $(target).css('background', color);
+                closeColorPicker();
+            }
+        });
+    });
 })();
+
+
+
